@@ -1,0 +1,105 @@
+/**
+ * Created by LandSer on 03/03/2017.
+ */
+
+Il "time" dell'ultimo blocco salvato nel DB
+db.collection.find().sort({"time": -1}).limit(1)
+
+transazioni in ingresso
+db.getCollection('transaction').find({$and : [{vout :
+    {$elemMatch : {addresses :"145SmDToAhtfcBQhNxfeM8hnS6CBeiRukY"}}},
+     {"vin.address" : {$ne: "145SmDToAhtfcBQhNxfeM8hnS6CBeiRukY"}}]})
+
+transazioni in uscita
+db.getCollection('transaction').find({"vin.address" :"145SmDToAhtfcBQhNxfeM8hnS6CBeiRukY"})
+
+bilancio in ingresso
+db.transaction.aggregate([{$match : {$and : [{vout :
+    {$elemMatch : {addresses :"145SmDToAhtfcBQhNxfeM8hnS6CBeiRukY"}}},
+     {"vin.address" : {$ne: "145SmDToAhtfcBQhNxfeM8hnS6CBeiRukY"}}]}},
+    {$unwind : "$vout"},
+    {$match : {"vout.addresses" :"145SmDToAhtfcBQhNxfeM8hnS6CBeiRukY"}},
+    {$group :
+    {   _id : "$_id",
+        out : {$sum : "$vout.value"}}},
+        {$group : {_id : "1", out : {$sum : "$out"}}
+            }])
+3092.83834365
+
+bilancio in uscita
+db.transaction.aggregate([{$match : {"vin.address" : "145SmDToAhtfcBQhNxfeM8hnS6CBeiRukY"}},
+    {$unwind : "$vout"},
+    {$match : {"vout.addresses" :{$ne : "145SmDToAhtfcBQhNxfeM8hnS6CBeiRukY"}}},
+    {$group :
+    {   _id : "$_id",
+        out : {$sum : "$vout.value"}}},
+        {$group : {_id : "1", out : {$sum : "$out"}}
+            }])
+3091.02984365
+//Il risultato non torna in quanto noi non stiamo considerando “fee”, sommare “fee”.
+
+Somma degli input di una transazione
+db.transaction.aggregate([
+{$match: {txid: "2e8fa683ff6777b929d38d119dc7c1e15b6a6e78629487775c659fa53765498f"}},
+{$unwind : "$vin"},
+{$lookup:
+        {
+          from: "transaction",
+          localField: "vin.txid",
+          foreignField: "txid",
+          as: "inputs"
+        }
+    },
+    {$unwind : "$inputs"},
+    {$project:{
+        inputValue: {$arrayElemAt: ["$inputs.vout", "$vin.vout"]}
+        }},
+    {$group: {
+         _id : "$_id",
+        inValue : {$sum : "$inputValue.value"}
+        }
+        }
+])
+
+fee di una transazione
+db.getCollection('transaction').aggregate([
+{$match: {txid: "0a5e3651cefc7071d930fbbe16c26fb06e548cae978eb3523c6484b20faa93a0"}},
+{$unwind : "$vin"},
+{$lookup:
+        {
+          from: "transaction",
+          localField: "vin.txid",
+          foreignField: "txid",
+          as: "inputs"
+        }
+    },
+    {$unwind : "$inputs"},
+    {$project:{
+        vout : 1,
+        inputValue: {$arrayElemAt: ["$inputs.vout", "$vin.vout"]}
+        }},
+    {$group: {
+         _id : "$_id",
+        vout : {$push: "$vout"},
+        inValue : {$sum: "$inputValue.value"}
+        }
+     },
+     {$project: {
+         inValue: 1,
+         vout : {$arrayElemAt: ["$vout", 0]}
+        }
+     },
+     {$unwind : "$vout"},
+     {$group :
+     {  _id : "$_id",
+        inValue : {$push: "$inValue"},
+        outSum : {$sum : "$vout.value"}
+        }},
+     {$project: {
+         inSum : {$arrayElemAt: ["$inValue", 0]},
+         outSum: 1,
+         fee: {$subtract: [{$arrayElemAt: ["$inValue", 0]}, "$outSum"]}
+
+     }
+     }
+])
