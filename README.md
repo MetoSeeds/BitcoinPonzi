@@ -32,4 +32,6 @@ Transaction collection:
 * blockheight (integer)
 * time (long)
 * rate (long): BTC = rate USD
+
+
 These (information in the transaction) are the minimal information you need.
