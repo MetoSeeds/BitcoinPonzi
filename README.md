@@ -9,11 +9,11 @@ Given the large size of the database, we recommend create indexes to reduce calc
 After the execution on of the program, to achieve a reasonable speed you have to create some indexes.
 Run the queries listed below (time ~45' each).
 
-* db.transaction.createIndex("txid" : 1)
-* db.transaction.createIndex("vin.address" : 1)
-* db.transaction.createIndex("vout.addresses" : 1)
-* db.transaction.createIndex("time" : 1)
-* db.transaction.createIndex("blockHash" : 1)
+* db.transaction.createIndex({"txid" : 1})
+* db.transaction.createIndex({"vin.address" : 1})
+* db.transaction.createIndex({"vout.addresses" : 1})
+* db.transaction.createIndex({"time" : 1})
+* db.transaction.createIndex({"blockHash" : 1})
 
 ### Schema
 Transaction collection:
